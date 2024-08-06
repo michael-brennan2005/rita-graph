@@ -1,6 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use petgraph::{graph::{Edge, NodeIndex}, visit::EdgeRef, Direction::Incoming};
+use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
 
 use crate::{graph_json::{GraphJson, NodeJsonData}, messages::send_status};
 
@@ -9,20 +9,20 @@ pub struct AudioGraph {
     graph: petgraph::Graph<AudioGraphNode, AudioGraphEdge> 
 } 
 
-// ASAP todo: Fix Rc RefCell madness
-type SharedEdgeData = Rc<RefCell<EdgeData>>;
 enum AudioGraphNode {
     Input {
         file_path: String
     },
-    Output {}
+    Output {
+        final_buffer: Vec<i16>
+    }
 }
 
 impl AudioGraphNode {
     pub fn num_outputs(&self) -> usize {
         match self {
-            AudioGraphNode::Input { file_path } => 1,
-            AudioGraphNode::Output { } => 0,
+            AudioGraphNode::Input { file_path: _  } => 1,
+            AudioGraphNode::Output { final_buffer: _ } => 0,
         }
     }
 
@@ -35,6 +35,8 @@ impl AudioGraphNode {
         match self {
             AudioGraphNode::Input { file_path } => {
                 send_status(window, "Processing input node");
+                
+                println!("filepath: {}", file_path);
 
                 let mut wav = match hound::WavReader::open(file_path) {
                     Ok(val) => val,
@@ -45,9 +47,10 @@ impl AudioGraphNode {
                 };
 
                 send_status(window, format!("Reading samples (this part is slow)"));
-        
-                let mut samples: Vec<f32> = Vec::with_capacity(wav.duration() as usize * 2);
-                for sample in wav.samples::<f32>() {
+                println!("Wav format is {:?} - {:?}", wav.spec().sample_format, wav.spec().bits_per_sample);
+
+                let mut samples: Vec<i16> = Vec::with_capacity(wav.duration() as usize * 2);
+                for sample in wav.samples::<i16>() {
                     match sample {
                         Ok(val) => {
                             samples.push(val);
@@ -70,23 +73,35 @@ impl AudioGraphNode {
                     }
                 };
             },
-            AudioGraphNode::Output {} => {
+            AudioGraphNode::Output { final_buffer } => {
                 send_status(window, "Processing output node");
 
-                // match inputs.get(&my_idx) {
-                //     Some(vec) => {
-                //         match vec.iter().find(|x| {
-                //             x.2 == 0
-                //         }) {
-                //             Some(val) => {
-                //                 let x = outputs.get(&val.0).unwrap().get(val.1);
-                //                 println!("WHAT ARE WE DOING HERE????");
-                //             },
-                //             None => todo!(),
-                //         }
-                //     },
-                //     None => todo!(),
-                // }
+                match inputs.get(&my_idx) {
+                    Some(vec) => {
+                        match vec.iter().find(|x| {
+                            x.2 == 0
+                        }) {
+                            Some(val) => {
+                                if let Some(vec) = outputs.get_mut(&val.0) {
+                                    if let Some(edge_data) = std::mem::replace(&mut vec[val.1], None) {
+                                        match edge_data {
+                                            EdgeData::SoundBuffer { buf } => {
+                                                *final_buffer = buf;
+                                            },
+                                        }
+                                    } else {
+                                        println!("UH OH (A)")
+                                    }
+                                } else {
+                                    println!("UH OH (B)");
+                                }
+
+                            },
+                            None => todo!(),
+                        }
+                    },
+                    None => todo!(),
+                }
             },
         }
     }
@@ -99,14 +114,15 @@ struct AudioGraphEdge {
     to_idx: usize
 }
 
+#[derive(Clone)]
 enum EdgeData {
     SoundBuffer {
-        buf: Vec<f32>
+        buf: Vec<i16>
     }
 }
 
 impl AudioGraph {
-    pub fn process(&mut self, window: &tauri::Window) -> Result<(), ()> {
+    pub fn process(&mut self, window: &tauri::Window) -> Result<Vec<i16>, ()> {
         send_status(window, "Beginning graph processing.");
 
         // get sorted order
@@ -137,17 +153,27 @@ impl AudioGraph {
         for idx in &sorted {
             let output_num = self.graph[*idx].num_outputs();
 
-            let mut vec: Vec<Option<EdgeData>> = Vec::with_capacity(output_num);
-            vec.fill_with(|| None);
+            let vec: Vec<Option<EdgeData>> = vec![None; output_num];
             
             outputs.insert(*idx, vec);
         }
 
+        // Processing (the fun step)
         for idx in &sorted {
             self.graph[*idx].process(window, *idx, &mut inputs, &mut outputs);
         }
         
-        Ok(())
+        // Find output and return the final buffer
+        for idx in &sorted {
+            match &mut self.graph[*idx] {
+                AudioGraphNode::Output { final_buffer } => {
+                    return Ok(std::mem::replace(final_buffer, Vec::new()));
+                },
+                _ => continue
+            }
+        }
+        
+        Err(())
     }
 }
 
@@ -169,7 +195,9 @@ impl TryFrom<GraphJson> for AudioGraph {
                     node_indexes.insert(node_json.id, idx);
                 },
                 NodeJsonData::Output {} => {
-                    let idx = graph.add_node(AudioGraphNode::Output {});
+                    let idx = graph.add_node(AudioGraphNode::Output {
+                        final_buffer: Vec::new()
+                    });
                     node_indexes.insert(node_json.id, idx);
                 },
             }
@@ -180,6 +208,7 @@ impl TryFrom<GraphJson> for AudioGraph {
             let to_node = node_indexes.get(&edge_json.target);
 
             if from_node.is_none() || to_node.is_none() {
+                println!("This triggered");
                 return Err(());
             }
 
@@ -189,7 +218,7 @@ impl TryFrom<GraphJson> for AudioGraph {
             });
         }
 
-        Err(())
+        Ok(AudioGraph { graph })
     }
 }   
 

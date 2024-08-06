@@ -5,13 +5,14 @@ mod graph_json;
 mod graph;
 mod messages;
 
+use graph::AudioGraph;
 use graph_json::GraphJson;
 use messages::send_status;
 use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-fn compile_graph(window: tauri::Window, graph_payload: String) {
+async fn compile_graph(window: tauri::Window, graph_payload: String) {
     send_status(&window, "Beginning graph compilation");
 
     let graph: serde_json::Result<GraphJson> = serde_json::from_str(&graph_payload);
@@ -20,9 +21,17 @@ fn compile_graph(window: tauri::Window, graph_payload: String) {
         return;
     }
     
-    let graph = graph.unwrap();
-
-    send_status(&window, "Compiled graph!");
+    let mut graph: AudioGraph = AudioGraph::try_from(graph.unwrap()).unwrap(); 
+    
+    match graph.process(&window) {
+        Ok(buf) => {
+            send_status(&window, "Graph compilation successful!");   
+            println!("Final buf length: {}", buf.len());         
+        },
+        Err(_) => {
+            send_status(&window, "Graph compilation failed");
+        },
+    }
 }
 
 #[tauri::command]
