@@ -9,31 +9,44 @@ import {
     useEdgesState,
     type OnConnect,
     ReactFlowInstance,
+    useReactFlow,
 } from "@xyflow/react";
-
-import "@xyflow/react/dist/style.css";
 
 import { initialNodes, nodeTypes, type CustomNodeType } from "./nodes";
 import { initialEdges, edgeTypes, type CustomEdgeType } from "./edges";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
+import { Button } from "./defaults";
 
 export default function App() {
-    const [nodes, , onNodesChange] = useNodesState<CustomNodeType>(initialNodes);
+    const [nodes, setNodes, onNodesChange] = useNodesState<CustomNodeType>(initialNodes);
     const [edges, setEdges, onEdgesChange] =
         useEdgesState<CustomEdgeType>(initialEdges);
     const [rfInstance, setRfInstance] = useState<ReactFlowInstance | undefined>(undefined);
-    
+
+
     const onConnect: OnConnect = useCallback(
-        (connection) => setEdges((edges) => addEdge(connection, edges)),
+        (connection) => {
+            setEdges((edges) => addEdge(connection, edges))
+        },
         [setEdges]
     );
 
     const [statusMessage, setStatusMessage] = useState("statuses show up here!")
+    const [totalNodes, setTotalNodes] = useState(0)
+    const [completedNodes, setCompletedNodes] = useState(0)
 
     listen("send_status_message", (evt) => {
         const msg = (evt.payload as { message: string }).message
         setStatusMessage(msg)
+    })
+
+    listen("set_total_nodes", (evt) => {
+        setTotalNodes(evt.payload as number)
+    })
+
+    listen("set_completed_nodes", (evt) => {
+        setCompletedNodes(evt.payload as number)
     })
 
     useEffect(() => {
@@ -41,41 +54,80 @@ export default function App() {
             console.log(rfInstance.toObject());
         }
     })
+
     return (
-        <div style={{"height": "100%", "width": "100%"}}>
-            <div>
-                <button onClick={() => {
-                    if (!rfInstance) {
-                        return
-                    }
+        <div className="w-full h-full font-sans">
+            <div className="bg-gray-800 text-white p-2">
+                <div className="flex flex-row justify-start gap-5">
+                    <Button onClick={() => {
+                        if (!rfInstance) {
+                            return
+                        }
 
-                    invoke("compile_graph", { graphPayload: JSON.stringify(rfInstance.toObject()) }).then((val) => {
-                        return
-                    })
-                }}>Compile</button>
-                <button onClick={() => {
-                    invoke("play")
-                }}>Play</button>
-                <h3>{statusMessage}</h3>
-            </div>
-            <div style={{"height": "80%", "width": "100%"}}>
-            <ReactFlow<CustomNodeType, CustomEdgeType>
-                style={{"height": 300}}
-                nodes={nodes}
-                nodeTypes={nodeTypes}
-                onNodesChange={onNodesChange}
-                edges={edges}
-                edgeTypes={edgeTypes}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onInit={setRfInstance}
-                fitView>   
+                        invoke("compile_graph", { graphPayload: JSON.stringify(rfInstance.toObject()) }).then((_val) => {
+                            return
+                        })
+                    }}>Compile</Button>
                 
-                <Background />
-                <MiniMap />
-                <Controls />
-            </ReactFlow>
+                    <Button onClick={() => {
+                        invoke("play")
+                    }}>Play</Button>
 
+                    <Button onClick={() => {
+                        invoke("pause")
+                    }}>Pause</Button>
+
+                    {/* TODO: figure out how to do flex growing and shrinking, so this takes up a ton of space and buttons take up little */}
+                    <div className="text-nowrap">
+                        Seeking goes here!
+                    </div>
+                </div>
+                <div className="flex flex-row mt-4 gap-5">
+                    <div className="text-nowrap overflow-hidden">
+                        {statusMessage}
+                    </div>
+                    <div className="bg-red-500">
+                        Processed nodes: {completedNodes} / {totalNodes}
+                    </div>
+                </div>
+                <div className="flex flex-row mt-4 gap-5">
+                    <Button onClick={() => {
+                        setNodes((nds) => {
+                            return nds.concat({
+                                // todo: more robust ID generation
+                                id: `${nds.length + 1}`,
+                                position: rfInstance!.screenToFlowPosition({
+                                    x: 400,
+                                    y: 400,
+                                }),
+                                origin: [0.5, 0.0],
+                                type: "input",
+                                data: { filePath: undefined }
+                            })
+                        })
+                    }}>Input</Button>
+                </div>
+            </div>
+
+            <div className="w-full h-[80%]">
+                <ReactFlow<CustomNodeType, CustomEdgeType>
+                    nodes={nodes}
+                    nodeTypes={nodeTypes}
+                    onNodesChange={onNodesChange}
+                    edges={edges}
+                    edgeTypes={edgeTypes}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onInit={(instance) => {
+                        // @ts-ignore
+                        setRfInstance(instance)
+                    }}
+                    fitView>   
+                    
+                    <Background />
+                    <MiniMap />
+                    <Controls />
+                </ReactFlow>
             </div>
         </div>
     );

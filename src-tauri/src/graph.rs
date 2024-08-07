@@ -133,6 +133,7 @@ impl AudioGraph {
                 return Err(());
             },
         };
+        let _ = window.emit("set_total_nodes", sorted.len());
 
         // get input dependencies
         // Each Vec is the inputs for that node, first usize is what node it originates from, second usize is from what "slot" output it is, third usize is to what "slot" input it is.
@@ -159,8 +160,10 @@ impl AudioGraph {
         }
 
         // Processing (the fun step)
-        for idx in &sorted {
+        let _ = window.emit("set_completed_nodes", 0);
+        for (i, idx) in sorted.iter().enumerate() {
             self.graph[*idx].process(window, *idx, &mut inputs, &mut outputs);
+            let _ = window.emit("set_completed_nodes", i + 1);
         }
         
         // Find output and return the final buffer

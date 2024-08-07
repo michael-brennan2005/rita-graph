@@ -1,6 +1,5 @@
 import type { BuiltInEdge, Edge, EdgeTypes } from "@xyflow/react";
 
-import ButtonEdge, { type ButtonEdge as ButtonEdgeType } from "./ButtonEdge.tsx";
 
 export const initialEdges = [
   // { id: "a->c", source: "a", target: "c", animated: true },
@@ -10,8 +9,7 @@ export const initialEdges = [
 
 export const edgeTypes = {
   // Add your custom edge types here!
-  "button-edge": ButtonEdge,
 } satisfies EdgeTypes;
 
 // Append the types of you custom edges to the BuiltInEdge type
-export type CustomEdgeType = BuiltInEdge | ButtonEdgeType;
+export type CustomEdgeType = BuiltInEdge;

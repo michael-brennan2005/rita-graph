@@ -63,6 +63,7 @@ impl Process {
 
         if self.playback_state == PlaybackState::Paused {
             silence(data);
+            return;
         }
 
         // assmue data is 2 channels and at correct sample rate.

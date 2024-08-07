@@ -22,5 +22,6 @@
 - TODO audit - i guess this should be a routine thing
 
 - SampleConfig - Graph needs to know correct sample rate for everythang
+- Switch out Window to AppHandle in rust code
 - Prevent compile button from being clicked while compilation is already happening
     - or at least provide a prompt or sumn

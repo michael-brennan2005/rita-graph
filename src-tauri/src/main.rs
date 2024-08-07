@@ -51,6 +51,12 @@ fn play(app_state: tauri::State<'_, AppState>) {
 }
 
 #[tauri::command]
+fn pause(app_state: tauri::State<'_, AppState>) {
+    let mut player = app_state.player.lock().expect("Mutex lock failed");
+    player.pause();
+}
+
+#[tauri::command]
 async fn pick_file() -> Option<String> {
     use tauri::api::dialog::blocking::FileDialogBuilder;
 
@@ -77,7 +83,7 @@ impl AppState {
 fn main() {
     tauri::Builder::default()
         .manage(AppState::new())
-        .invoke_handler(tauri::generate_handler![pick_file, compile_graph, play])
+        .invoke_handler(tauri::generate_handler![pick_file, compile_graph, play, pause])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -75,6 +75,10 @@ impl Player {
         let _ = self.app_to_player_send.push(AppToPlayerMessage::Play);
     }
 
+    pub fn pause(&mut self) {
+        let _ = self.app_to_player_send.push(AppToPlayerMessage::Pause);
+    }
+    
     pub fn set_new_buffer(&mut self, buffer: Vec<i16>) {
         let _ = self.app_to_player_send.push(AppToPlayerMessage::UseBuffer(buffer));
     }
