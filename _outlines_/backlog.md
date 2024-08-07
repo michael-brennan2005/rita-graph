@@ -17,9 +17,10 @@
             - How does a node set its output?
                 - outputs.get(my_idx).set(desired_output_slot, val)
             - Input_slot == to_idx, output_slot == from_idx
-    - (ACTUAL TODO MOST OF THIS IS DISCUSSION): Make nice methods for getting input and setting output.
-
+- (ACTUAL TODO MOST OF THIS IS DISCUSSION): Make nice methods for getting input and setting output.
+    - Do this when we have more nodes and a sense of the pattern for what nodes do with their inputs and outputs
 - TODO audit - i guess this should be a routine thing
+
 - SampleConfig - Graph needs to know correct sample rate for everythang
 - Prevent compile button from being clicked while compilation is already happening
     - or at least provide a prompt or sumn

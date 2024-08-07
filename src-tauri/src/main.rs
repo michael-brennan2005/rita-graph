@@ -46,7 +46,6 @@ async fn compile_graph(window: tauri::Window, app_state: tauri::State<'_, AppSta
 
 #[tauri::command]
 fn play(app_state: tauri::State<'_, AppState>) {
-    println!("XXX");
     let mut player = app_state.player.lock().expect("Mutex lock failed");
     player.play();
 }

@@ -19,8 +19,7 @@ pub struct NodeJson {
 #[serde(untagged)]
 pub enum NodeJsonData {
     Input {
-        // todo: oh come the fuck on, rename one of these
-        #[serde(rename = "filepath")]
+        #[serde(rename = "filePath")]
         file_path: String
     },
     Output {}

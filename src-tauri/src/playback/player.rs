@@ -53,7 +53,6 @@ impl Player {
             .build_output_stream(
                 &config,
                 move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
-                    println!("Y");
                     process.process(data);
                 },
                 move |err| {

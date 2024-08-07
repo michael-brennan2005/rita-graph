@@ -4,7 +4,7 @@ import { Handle, Position } from "@xyflow/react";
 import { useEffect, useState } from "react";
 
 export type InputNodeData = {
-    filepath?: string;
+    filePath?: string;
 };
 
 export type InputNode = Node<InputNodeData>;
@@ -14,7 +14,7 @@ export default function InputNode({
 }: NodeProps<InputNode>) {
     const [filePath, setFilePath] = useState("");
     useEffect(() => {
-        data.filepath = filePath;
+        data.filePath = filePath;
     }, [filePath])
 
     return (

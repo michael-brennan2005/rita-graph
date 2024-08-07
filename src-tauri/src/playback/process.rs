@@ -31,19 +31,13 @@ impl Process {
         }
     }
 
-    // TODO: were not acc erroring out anymore, what do?
-    pub fn process(&mut self, data: &mut [i16]) {
-        println!("X");
-        if let Err(e) = self.try_process(data) {
-            silence(data);
-            println!("Error: {:?}", e);
-        }
-    }
-
-    pub fn try_process(
+    // NOTE: as of right now we never have errors, but in the future, if we do,
+    // go back to a try_process (which returns void) calls a process (which returns result).
+    // I like that pattern
+    pub fn process(
         &mut self,
         data: &mut [i16],
-    ) -> Result<(), ()> {
+    ) {
         while let Ok(msg) = self.app_to_player_recv.pop() {
             match msg {
                 AppToPlayerMessage::Play => {
@@ -69,25 +63,27 @@ impl Process {
 
         if self.playback_state == PlaybackState::Paused {
             silence(data);
-            return Ok(());
         }
 
         // assmue data is 2 channels and at correct sample rate.
         if let Some(current_buffer) = &self.current_buffer {
-            // TODO: do some copying or sumn
-            for sample in data {
-                if self.current_buffer_idx >= current_buffer.len() {
-                    println!("D");
-                    self.current_buffer_idx = 0;
+            if self.current_buffer_idx + data.len() >= current_buffer.len() {
+                // TODO: PLEASE VET THIS (will be easy to do with synthetic waveform nodes we start making where we can make them be 1 sec)
+                let count_at_end = current_buffer.len() - self.current_buffer_idx;
+                let count_at_start = data.len() - count_at_end;
+                unsafe {
+                    std::ptr::copy(current_buffer.as_ptr().add(self.current_buffer_idx), data.as_mut_ptr(), count_at_end);
+                    std::ptr::copy(current_buffer.as_ptr(), data.as_mut_ptr().add(count_at_end), count_at_start);                    
                 }
-
-                *sample = current_buffer[self.current_buffer_idx];
-                self.current_buffer_idx += 1;
+                self.current_buffer_idx = count_at_start;
+            } else {
+                unsafe {
+                    std::ptr::copy(current_buffer.as_ptr().add(self.current_buffer_idx), data.as_mut_ptr(), data.len());
+                }
+                self.current_buffer_idx += data.len();
             }
-            Ok(())
         } else {
             silence(data);
-            Ok(())
         }
     }
 }
