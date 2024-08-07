@@ -23,7 +23,7 @@ export default function InputNode({
             <div>Input</div>
             <div>{filePath != "" ? filePath : "None"}</div>
             <button onClick={(_) => {
-                invoke("pickFile").then((val) => {
+                invoke("pick_file").then((val) => {
                     let filepath = val as string | undefined;
                     if (filepath) {
                         setFilePath(filepath)

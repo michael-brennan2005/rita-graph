@@ -2,59 +2,83 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod graph_json;
+mod playback;
 mod graph;
 mod messages;
+
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use graph::AudioGraph;
 use graph_json::GraphJson;
 use messages::send_status;
-use tauri::Manager;
+use playback::player::Player;
+use tauri::App;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-async fn compile_graph(window: tauri::Window, graph_payload: String) {
+async fn compile_graph(window: tauri::Window, app_state: tauri::State<'_, AppState>, graph_payload: String) -> Result<(), ()> {
     send_status(&window, "Beginning graph compilation");
 
     let graph: serde_json::Result<GraphJson> = serde_json::from_str(&graph_payload);
     if graph.is_err() {
         send_status(&window, format!("Error deserializing graph: {:?}", graph.unwrap_err()));
-        return;
+        return Err(());
     }
     
     let mut graph: AudioGraph = AudioGraph::try_from(graph.unwrap()).unwrap(); 
     
     match graph.process(&window) {
         Ok(buf) => {
-            send_status(&window, "Graph compilation successful!");   
-            println!("Final buf length: {}", buf.len());         
+            send_status(&window, "Uploading to player...");   
+
+            let mut player = app_state.player.lock().expect("Mutex lock failed");
+            player.set_new_buffer(buf);
+
+            send_status(&window, "Graph compilation success!");   
         },
         Err(_) => {
             send_status(&window, "Graph compilation failed");
         },
     }
+
+    Ok(())
 }
 
 #[tauri::command]
-fn play(window: tauri::Window) {
-    send_status(&window, "Playing music!");
+fn play(app_state: tauri::State<'_, AppState>) {
+    println!("XXX");
+    let mut player = app_state.player.lock().expect("Mutex lock failed");
+    player.play();
 }
 
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rita!", name)
-}
-
-#[tauri::command]
-async fn pickFile() -> Option<String> {
+async fn pick_file() -> Option<String> {
     use tauri::api::dialog::blocking::FileDialogBuilder;
 
     let dialog_result = FileDialogBuilder::new().pick_file();
     dialog_result.map(|pb| pb.to_string_lossy().to_string())
 }
 
+struct AppState {
+    pub player: Arc<Mutex<Player>>
+}
+
+// Rust is the worst lang, except for all the other ones 
+unsafe impl Send for AppState {}
+unsafe impl Sync for AppState {}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            player: Arc::new(Mutex::new(Player::new())),
+        }
+    }
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![pickFile, compile_graph, play])
+        .manage(AppState::new())
+        .invoke_handler(tauri::generate_handler![pick_file, compile_graph, play])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
