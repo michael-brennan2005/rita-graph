@@ -10,7 +10,8 @@ pub enum AppToPlayerMessage {
 }
 
 pub enum PlayerToAppMessage {
-    PlaybackPosition(usize),
+    // First usize is the last read idx of the buffer, second usize is the size of the buffer
+    PlaybackPosition(usize, usize),
     DropBuffer(Vec<f32>)
 }
 

@@ -1,5 +1,5 @@
 use cpal::{traits::{DeviceTrait, HostTrait, StreamTrait}, SampleFormat, Stream, StreamConfig, SupportedStreamConfigRange};
-use rtrb::{Consumer, Producer, RingBuffer};
+use rtrb::{Consumer, PopError, Producer, RingBuffer};
 
 use crate::playback::process::Process;
 
@@ -96,9 +96,7 @@ impl Player {
         let _ = self.app_to_player_send.push(AppToPlayerMessage::UseBuffer(buffer));
     }
 
-    pub fn handle_messages<F: FnMut(PlayerToAppMessage)>(&mut self, mut func: F) {
-        while let Ok(msg) = self.player_to_app_recv.pop() {
-            func(msg);
-        }
+    pub fn pop_message(&mut self) -> Result<PlayerToAppMessage, PopError> {
+        self.player_to_app_recv.pop()
     }
 }

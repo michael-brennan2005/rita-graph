@@ -17,6 +17,7 @@ import { initialEdges, edgeTypes, type CustomEdgeType } from "./edges";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Button } from "./defaults";
+import { formatTime } from "./utils";
 
 export default function App() {
     const [nodes, setNodes, onNodesChange] = useNodesState<CustomNodeType>(initialNodes);
@@ -33,6 +34,9 @@ export default function App() {
     );
 
     const [statusMessage, setStatusMessage] = useState("statuses show up here!")
+    const [currentSeconds, setCurrentSeconds] = useState(0);
+    const [totalSeconds, setTotalSeconds] = useState(0);
+
     const [totalNodes, setTotalNodes] = useState(0)
     const [completedNodes, setCompletedNodes] = useState(0)
 
@@ -47,6 +51,13 @@ export default function App() {
 
     listen("set_completed_nodes", (evt) => {
         setCompletedNodes(evt.payload as number)
+    })
+
+    listen("update_playback_position", (evt) => {
+        console.log(evt)
+        let msg = evt.payload as { current_seconds: number, total_seconds: number }
+        setCurrentSeconds(msg.current_seconds)
+        setTotalSeconds(msg.total_seconds)
     })
 
     useEffect(() => {
@@ -79,7 +90,7 @@ export default function App() {
 
                     {/* TODO: figure out how to do flex growing and shrinking, so this takes up a ton of space and buttons take up little */}
                     <div className="text-nowrap">
-                        Seeking goes here!
+                        {formatTime(currentSeconds)} / {formatTime(totalSeconds)}
                     </div>
                 </div>
                 <div className="flex flex-row mt-4 gap-5">

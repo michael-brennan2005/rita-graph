@@ -23,5 +23,6 @@
 
 - Switch out Window to AppHandle in rust code
 - AudioGraphNode::process() should be returning results
+- Playhead is weird and broken and bad
 - Prevent compile button from being clicked while compilation is already happening
     - or at least provide a prompt or sumn

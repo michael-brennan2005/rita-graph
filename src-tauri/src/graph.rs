@@ -49,7 +49,7 @@ impl AudioGraphNode {
                 send_status(window, format!("Reading samples (this part is slow)"));
                 println!("Wav format is {:?} - {:?}", wav.spec().sample_format, wav.spec().bits_per_sample);
                 
-                if (wav.spec().channels as usize != output_spec.channels) {
+                if wav.spec().channels as usize != output_spec.channels {
                     panic!("Doesnt support unequal channels right now");
                 }
 

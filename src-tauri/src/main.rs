@@ -10,8 +10,9 @@ use std::{sync::{Arc, Mutex}, time::Duration};
 
 use graph::AudioGraph;
 use graph_json::GraphJson;
-use messages::send_status;
-use playback::{player::Player, spec::F32FormatSpec};
+use messages::{send_status, UpdatePlaybackPosition};
+use playback::{player::Player, spec::F32FormatSpec, PlayerToAppMessage};
+use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -87,6 +88,37 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![pick_file, compile_graph, play, pause])
+        .setup(|app| {
+            let app_handle = app.handle();
+
+            // this is super buggy
+            // std::thread::spawn(move || {
+            //     let app_state = app_handle.state::<AppState>();
+
+            //     loop {
+            //         let mut player = app_state.player.lock().expect("Cannot lock mutex");
+                    
+            //         while let Ok(msg) = player.pop_message() {
+            //             match msg {
+            //                 PlayerToAppMessage::PlaybackPosition(current_frame, total_frames) => {
+            //                     let current_seconds = current_frame / player.format().sample_rate;
+            //                     let total_seconds = total_frames / player.format().sample_rate;
+                                
+            //                     let _ = app_handle.emit_all("update_playback_position", UpdatePlaybackPosition {
+            //                         current_seconds,
+            //                         total_seconds,
+            //                     });
+            //                 },
+            //                 _ => {},
+            //             }
+            //         }
+    
+            //         std::thread::sleep(Duration::from_secs_f32(1.0 / 60.0));    
+            //     }
+            // });
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

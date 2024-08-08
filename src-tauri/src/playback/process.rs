@@ -83,9 +83,13 @@ impl Process {
                 }
                 self.current_buffer_idx += data.len();
             }
+
+            self.player_to_app_send.push(PlayerToAppMessage::PlaybackPosition(self.current_buffer_idx, current_buffer.len()));
         } else {
             silence(data);
+            self.player_to_app_send.push(PlayerToAppMessage::PlaybackPosition(0, 0));
         }
+
     }
 }
 
