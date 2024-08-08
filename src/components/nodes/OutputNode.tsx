@@ -1,7 +1,5 @@
-import { invoke } from "@tauri-apps/api/tauri";
 import type { Node, NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
-import { useState } from "react";
 
 export type OutputNodeData = {};
 

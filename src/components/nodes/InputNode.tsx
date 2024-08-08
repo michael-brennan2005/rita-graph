@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import type { Node, NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { useEffect, useState } from "react";
-import { Button } from "../defaults";
+import { Button } from "@/components/ui/button";
 
 export type InputNodeData = {
     filePath?: string;

@@ -12,12 +12,12 @@ import {
     useReactFlow,
 } from "@xyflow/react";
 
-import { initialNodes, nodeTypes, type CustomNodeType } from "./nodes";
-import { initialEdges, edgeTypes, type CustomEdgeType } from "./edges";
+import { initialNodes, nodeTypes, type CustomNodeType } from "./components/nodes";
+import { initialEdges, edgeTypes, type CustomEdgeType } from "./components/edges";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
-import { Button } from "./defaults";
-import { formatTime } from "./utils";
+import { Button } from "@/components/ui/button";
+import { formatTime } from "@/lib/utils";
 
 export default function App() {
     const [nodes, setNodes, onNodesChange] = useNodesState<CustomNodeType>(initialNodes);
