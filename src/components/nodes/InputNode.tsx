@@ -3,6 +3,9 @@ import type { Node, NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 
 export type InputNodeData = {
     filePath?: string;
@@ -19,11 +22,16 @@ export default function InputNode({
     }, [filePath])
 
     return (
-        <div className="w-48 p-0 text-white bg-gray-800 rounded-lg text-xs border-0 overflow-hidden">
-            <div className="px-2 py-1 bg-green-600 font-semibold ">Input - File</div>
-            <div className="px-2 py-2 flex flex-row justify-between">
-                <input value={filePath != "" ? filePath : "N/A"} disabled className="rounded-sm bg-gray-500 py-1 px-2 w-24"></input>
-                <Button onClick={(_) => {
+        <Card>
+            <CardHeader className="bg-blue-500">
+                <CardTitle className="text-">
+                    Input - File
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Label>Filename</Label>
+                <Input value={filePath != "" ? filePath : "N/A"} disabled/>
+                <Button className="h-6" onClick={(_) => {
                     invoke("pick_file").then((val) => {
                         let filepath = val as string | undefined;
                         if (filepath) {
@@ -32,7 +40,7 @@ export default function InputNode({
                     })
                 }}>Choose</Button>
                 <Handle type="source" position={Position.Right} className="border border-solid border-gray-300 bg-gray-600 rounded-full w-4 h-4" />
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }
