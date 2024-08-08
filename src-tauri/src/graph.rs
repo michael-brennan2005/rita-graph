@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
+use samplerate::{convert, ConverterType};
 
-use crate::{graph_json::{GraphJson, NodeJsonData}, messages::send_status};
+use crate::{graph_json::{GraphJson, NodeJsonData}, messages::send_status, playback::spec::{F32Convert, F32FormatSpec}};
 
 // the audio graph!!!
 pub struct AudioGraph {
@@ -14,7 +15,7 @@ enum AudioGraphNode {
         file_path: String
     },
     Output {
-        final_buffer: Vec<i16>
+        final_buffer: Vec<f32>
     }
 }
 
@@ -30,14 +31,13 @@ impl AudioGraphNode {
         window: &tauri::Window, 
         my_idx: NodeIndex, 
         inputs: &mut HashMap<NodeIndex<u32>, Vec<(NodeIndex<u32>, usize, usize)>>, 
-        outputs: &mut HashMap<NodeIndex<u32>, Vec<Option<EdgeData>>>
+        outputs: &mut HashMap<NodeIndex<u32>, Vec<Option<EdgeData>>>,
+        output_spec: F32FormatSpec
     ) {
         match self {
             AudioGraphNode::Input { file_path } => {
                 send_status(window, "Processing input node");
                 
-                println!("filepath: {}", file_path);
-
                 let mut wav = match hound::WavReader::open(file_path) {
                     Ok(val) => val,
                     Err(err) => {
@@ -48,28 +48,40 @@ impl AudioGraphNode {
 
                 send_status(window, format!("Reading samples (this part is slow)"));
                 println!("Wav format is {:?} - {:?}", wav.spec().sample_format, wav.spec().bits_per_sample);
-
-                let mut samples: Vec<i16> = Vec::with_capacity(wav.duration() as usize * 2);
-                for sample in wav.samples::<i16>() {
-                    match sample {
-                        Ok(val) => {
-                            samples.push(val);
-                        },
-                        Err(err) => {
-                            send_status(window, format!("Failed to read wav: {}", err.to_string()));
-                            return;
-                        },
-                    }
+                
+                if (wav.spec().channels as usize != output_spec.channels) {
+                    panic!("Doesnt support unequal channels right now");
                 }
 
-                send_status(window, format!("Reading samples complete!"));
+                let samples: Vec<f32> = match (wav.spec().sample_format, wav.spec().bits_per_sample) {
+                    (hound::SampleFormat::Float, 32) => {
+                        wav.samples::<f32>().map(|s| {
+                            s.expect("Reading samples failed")
+                        }).collect()
+                    },
+                    (hound::SampleFormat::Int, 16) => {
+                        wav.samples::<i16>().map(|s| {
+                            F32FormatSpec::convert(s.expect("Reading samples failed"))
+                        }).collect()
+                    },
+                    _ => {
+                        println!("Hit this");
+                        todo!();
+                    }
+                };
+
+                send_status(window, format!("Resampling..."));
+
+                let interleaved_samples: Vec<f32> = convert(wav.spec().sample_rate as u32, output_spec.sample_rate as u32, 2, ConverterType::SincFastest, samples.as_slice()).expect("Resampling failed");
+
+                send_status(window, format!("Reading audio completed!"));
                 
                 match outputs.get_mut(&my_idx) {
                     Some(vec) => {
-                        vec[0] = Some(EdgeData::SoundBuffer { buf: samples })
+                        vec[0] = Some(EdgeData::SoundBuffer { buf: interleaved_samples })
                     },
                     None => {
-                        send_status(window, format!("Potential issue with outputs matrix initialization"))
+                        send_status(window, format!("Potential issue with outputs matrix initialization (what)"))
                     }
                 };
             },
@@ -117,12 +129,12 @@ struct AudioGraphEdge {
 #[derive(Clone)]
 enum EdgeData {
     SoundBuffer {
-        buf: Vec<i16>
+        buf: Vec<f32>
     }
 }
 
 impl AudioGraph {
-    pub fn process(&mut self, window: &tauri::Window) -> Result<Vec<i16>, ()> {
+    pub fn process(&mut self, window: &tauri::Window, output_spec: F32FormatSpec) -> Result<Vec<f32>, ()> {
         send_status(window, "Beginning graph processing.");
 
         // get sorted order
@@ -162,7 +174,7 @@ impl AudioGraph {
         // Processing (the fun step)
         let _ = window.emit("set_completed_nodes", 0);
         for (i, idx) in sorted.iter().enumerate() {
-            self.graph[*idx].process(window, *idx, &mut inputs, &mut outputs);
+            self.graph[*idx].process(window, *idx, &mut inputs, &mut outputs, output_spec);
             let _ = window.emit("set_completed_nodes", i + 1);
         }
         

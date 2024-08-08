@@ -11,7 +11,7 @@ pub enum PlaybackState {
 }
 
 pub struct Process {
-    current_buffer: Option<Vec<i16>>,
+    current_buffer: Option<Vec<f32>>,
     current_buffer_idx: usize,
 
     playback_state: PlaybackState,
@@ -36,7 +36,7 @@ impl Process {
     // I like that pattern
     pub fn process(
         &mut self,
-        data: &mut [i16],
+        data: &mut [f32],
     ) {
         while let Ok(msg) = self.app_to_player_recv.pop() {
             match msg {
@@ -89,8 +89,8 @@ impl Process {
     }
 }
 
-pub fn silence(data: &mut [i16]) {
+pub fn silence(data: &mut [f32]) {
     for sample in data.iter_mut() {
-        *sample = 0;
+        *sample = 0.0;
     }
 }

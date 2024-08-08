@@ -21,7 +21,7 @@
     - Do this when we have more nodes and a sense of the pattern for what nodes do with their inputs and outputs
 - TODO audit - i guess this should be a routine thing
 
-- SampleConfig - Graph needs to know correct sample rate for everythang
 - Switch out Window to AppHandle in rust code
+- AudioGraphNode::process() should be returning results
 - Prevent compile button from being clicked while compilation is already happening
     - or at least provide a prompt or sumn

@@ -11,8 +11,7 @@ use std::{sync::{Arc, Mutex}, time::Duration};
 use graph::AudioGraph;
 use graph_json::GraphJson;
 use messages::send_status;
-use playback::player::Player;
-use tauri::App;
+use playback::{player::Player, spec::F32FormatSpec};
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -26,8 +25,12 @@ async fn compile_graph(window: tauri::Window, app_state: tauri::State<'_, AppSta
     }
     
     let mut graph: AudioGraph = AudioGraph::try_from(graph.unwrap()).unwrap(); 
-    
-    match graph.process(&window) {
+    let format: F32FormatSpec = {
+        let player = app_state.player.lock().expect("Failed to lock mutex");
+        player.format()
+    };
+
+    match graph.process(&window, format) {
         Ok(buf) => {
             send_status(&window, "Uploading to player...");   
 
