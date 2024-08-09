@@ -17,6 +17,9 @@
             - How does a node set its output?
                 - outputs.get(my_idx).set(desired_output_slot, val)
             - Input_slot == to_idx, output_slot == from_idx
+
+--------------------------------
+
 - (ACTUAL TODO MOST OF THIS IS DISCUSSION): Make nice methods for getting input and setting output.
     - Do this when we have more nodes and a sense of the pattern for what nodes do with their inputs and outputs
 - TODO audit - i guess this should be a routine thing
@@ -26,3 +29,8 @@
 - Playhead is weird and broken and bad
 - Prevent compile button from being clicked while compilation is already happening
     - or at least provide a prompt or sumn
+    - this will be a non-issue with switch t ostreaming
+- PLEASE get rid of buttons and use command menu for adding nodes
+- Figuring out a way for nice validation on inputs and stuff
+    - Making sure numeric inputs only allow numeric inputs, in a nice/ergonomic way
+    - There is probably libraries/resources for this - common problem

@@ -117,6 +117,27 @@ export default function App() {
                             })
                         })
                     }}>Input</Button>
+
+                    <Button onClick={() => {
+                        setNodes((nds) => {
+                            return nds.concat({
+                                // todo: more robust ID generation
+                                id: `${nds.length + 1}`,
+                                position: rfInstance!.screenToFlowPosition({
+                                    x: 400,
+                                    y: 400,
+                                }),
+                                origin: [0.5, 0.0],
+                                type: "wave_gen",
+                                data: { 
+                                    wave_type: "sine",
+                                    frequency: 0.0,
+                                    amplitude: 0.0,
+                                    seconds: 0.0
+                                }
+                            })
+                        })
+                    }}>WaveGen</Button>
                 </div>
             </div>
 
@@ -136,7 +157,6 @@ export default function App() {
                     fitView>   
                     
                     <Background />
-                    <MiniMap />
                     <Controls />
                 </ReactFlow>
             </div>

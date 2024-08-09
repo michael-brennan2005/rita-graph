@@ -1,9 +1,10 @@
+use core::f32;
 use std::collections::HashMap;
 
-use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
+use petgraph::{data::Build, graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
 use samplerate::{convert, ConverterType};
 
-use crate::{graph_json::{GraphJson, NodeJsonData}, messages::send_status, playback::spec::{F32Convert, F32FormatSpec}};
+use crate::{graph_json::{GraphJson, NodeJsonData, WaveType}, messages::send_status, playback::spec::{F32Convert, F32FormatSpec}};
 
 // the audio graph!!!
 pub struct AudioGraph {
@@ -14,6 +15,12 @@ enum AudioGraphNode {
     Input {
         file_path: String
     },
+    WaveGen {
+        wave_type: WaveType,
+        frequency: f32,
+        amplitude: f32,
+        seconds: f32
+    },
     Output {
         final_buffer: Vec<f32>
     }
@@ -23,6 +30,7 @@ impl AudioGraphNode {
     pub fn num_outputs(&self) -> usize {
         match self {
             AudioGraphNode::Input { file_path: _  } => 1,
+            AudioGraphNode::WaveGen { wave_type: _, frequency: _, amplitude: _, seconds: _ } => 1,
             AudioGraphNode::Output { final_buffer: _ } => 0,
         }
     }
@@ -79,6 +87,66 @@ impl AudioGraphNode {
                 match outputs.get_mut(&my_idx) {
                     Some(vec) => {
                         vec[0] = Some(EdgeData::SoundBuffer { buf: interleaved_samples })
+                    },
+                    None => {
+                        send_status(window, format!("Potential issue with outputs matrix initialization (what)"))
+                    }
+                };
+            },
+            AudioGraphNode::WaveGen { wave_type, frequency, amplitude, seconds } => {
+                let total_frames = *seconds * (output_spec.sample_rate as f32);
+                let mut samples: Vec<f32> = Vec::with_capacity((total_frames * 2.0) as usize);
+
+                send_status(window, format!("Generating samples..."));
+
+                let sample_rate_f: f32 = output_spec.sample_rate as f32;
+
+                match *wave_type {
+                    WaveType::Sine => {
+                        let angle = 2.0 * f32::consts::PI * *frequency;
+                        for i in 0..(total_frames as usize) {
+                            let t = i as f32 / sample_rate_f;
+                            let sample = *amplitude * (angle * t).sin();
+                            samples.push(sample);
+                            samples.push(sample);
+                        }        
+                    },
+                    WaveType::Triangle => {
+                        let period = 1.0 / *frequency;
+                        for i in 0..(total_frames as usize) {
+                            let t = i as f32 / sample_rate_f;
+                            let sample = 
+                                (4.0 * *amplitude / period)
+                                * f32::abs(((t - period / 4.0) % period) - period / 2.0)
+                                - *amplitude;
+                            samples.push(sample);
+                            samples.push(sample);
+                        }
+                    },
+                    WaveType::Square => {
+                        for i in 0..(total_frames as usize) {
+                            let t = i as f32 / sample_rate_f;
+                            let sample = *amplitude * 2.0 * (2.0 * (*frequency * t).floor() - (2.0 * *frequency * t).floor()) + 1.0;
+                            samples.push(sample);
+                            samples.push(sample);
+                        }
+                    },
+                    WaveType::Sawtooth => {
+                        let period = 1.0 / *frequency;
+                        for i in 0..(total_frames as usize) {
+                            let t = i as f32 / sample_rate_f;
+                            let sample = 2.0 * *amplitude * ( (t / period) - (1.0 / 2.0 + t / period).floor());
+                            samples.push(sample);
+                            samples.push(sample);
+                        }
+                    },
+                }
+
+                send_status(window, format!("Generating samples completed!"));
+                
+                match outputs.get_mut(&my_idx) {
+                    Some(vec) => {
+                        vec[0] = Some(EdgeData::SoundBuffer { buf: samples })
                     },
                     None => {
                         send_status(window, format!("Potential issue with outputs matrix initialization (what)"))
@@ -206,6 +274,16 @@ impl TryFrom<GraphJson> for AudioGraph {
                 NodeJsonData::Input { file_path } => {
                     let idx = graph.add_node(AudioGraphNode::Input {
                         file_path: file_path 
+                    });
+                    node_indexes.insert(node_json.id, idx);
+                },
+                NodeJsonData::WaveGen { wave_type, frequency, amplitude, seconds } => {
+                    let wave_type: WaveType = wave_type.try_into().expect("Unknown wave type");
+                    let idx = graph.add_node(AudioGraphNode::WaveGen { 
+                        wave_type, 
+                        frequency, 
+                        amplitude, 
+                        seconds 
                     });
                     node_indexes.insert(node_json.id, idx);
                 },

@@ -23,7 +23,7 @@ export default function InputNode({
 
     return (
         <Card>
-            <CardHeader className="bg-blue-500">
+            <CardHeader className="bg-green-600">
                 <CardTitle className="text-">
                     Input - File
                 </CardTitle>

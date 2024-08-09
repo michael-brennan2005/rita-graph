@@ -19,3 +19,8 @@ export function formatTime(seconds: number): string {
   return `${formattedMinutes}:${formattedSeconds}`;
 }
 
+// Used to make sure an input only takes numeric values.
+export function validateNumericInput(val: string): string {
+    return val.replace(/[^0-9.]/g, '').replace(/\.(?=.*\.)/g, '')
+}
+
