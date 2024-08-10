@@ -10,8 +10,8 @@ pub struct GraphJson {
 #[derive(serde::Deserialize, Debug)]
 pub struct NodeJson {
     pub id: String,
-    #[serde(rename = "type")]
-    pub node_type: String,
+    // So far all node types have different nodejsondata so we can just this to decipher types,
+    // and not need the node_json that comes with reactflow's JSON output.
     pub data: NodeJsonData
 }
 

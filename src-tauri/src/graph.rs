@@ -1,7 +1,7 @@
 use core::f32;
-use std::{borrow::Borrow, collections::HashMap};
+use std::collections::HashMap;
 
-use petgraph::{data::Build, graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
+use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
 use samplerate::{convert, ConverterType};
 
 use crate::{graph_json::{BinOp, GraphJson, NodeJsonData, ShortBehavior, WaveType}, messages::send_status, playback::spec::{F32Convert, F32FormatSpec}};
@@ -37,7 +37,7 @@ impl AudioGraphNode {
             AudioGraphNode::Input { file_path: _  } => 1,
             AudioGraphNode::WaveGen { wave_type: _, frequency: _, amplitude: _, seconds: _ } => 1,
             AudioGraphNode::Output { final_buffer: _ } => 0,
-            AudioGraphNode::BinOp { operation, on_short_a, on_short_b } => 1,
+            AudioGraphNode::BinOp { operation: _, on_short_a: _, on_short_b: _ } => 1,
             
         }
     }
@@ -259,14 +259,6 @@ impl AudioGraphNode {
                 }
             },
         }
-    }
-
-    /// Returns `true` if the audio graph node is [`BinOp`].
-    ///
-    /// [`BinOp`]: AudioGraphNode::BinOp
-    #[must_use]
-    fn is_bin_op(&self) -> bool {
-        matches!(self, Self::BinOp { .. })
     }
 }
 

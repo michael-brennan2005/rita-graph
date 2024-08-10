@@ -19,19 +19,21 @@
             - Input_slot == to_idx, output_slot == from_idx
 
 --------------------------------
+- TODO audit - i guess this should be a routine thing
+
 
 - (ACTUAL TODO MOST OF THIS IS DISCUSSION): Make nice methods for getting input and setting output.
     - Do this when we have more nodes and a sense of the pattern for what nodes do with their inputs and outputs
-- TODO audit - i guess this should be a routine thing
-
-- Switch out Window to AppHandle in rust code
+    - I think we figured out a very nice way to do this in AudioNodeInput::process() - see how BinOp does it
 - AudioGraphNode::process() should be returning results
-- Playhead is weird and broken and bad
-- Prevent compile button from being clicked while compilation is already happening
-    - or at least provide a prompt or sumn
-    - this will be a non-issue with switch t ostreaming
+    - Getting inputs and outputs is a million .unwraps() and .expects() but if you put into a method that returns a single Option/Result, this becomes
+    very doable.
+    - Errs can be a string type for now, emit an event when it happens and we can use shadcn Sonner components for a cool interface
+- Switch out Window to AppHandle in rust code
 - PLEASE get rid of buttons and use command menu for adding nodes
+
 - Figuring out a way for nice validation on inputs and stuff
     - Making sure numeric inputs only allow numeric inputs, in a nice/ergonomic way
     - There is probably libraries/resources for this - common problem
+    - I think this ties into node builder api if we make that - it will have functions for creating inputs that validate their values
 - Node builder for UI - this is gonna get very annoying very quickly

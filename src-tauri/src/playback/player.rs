@@ -5,10 +5,10 @@ use crate::playback::process::Process;
 
 use super::{spec::F32FormatSpec, AppToPlayerMessage, PlayerToAppMessage};
 
-
-
 pub struct Player {
-    stream: Stream,
+    // Stream needs to be restored else the output thread will get destroyed
+    #[allow(dead_code)]
+    stream: Stream, 
     format: F32FormatSpec,
 
     app_to_player_send: Producer<AppToPlayerMessage>,
