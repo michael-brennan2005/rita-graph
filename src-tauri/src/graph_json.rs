@@ -37,6 +37,44 @@ impl TryFrom<String> for WaveType {
     }
 }
 
+#[derive(serde::Deserialize, Debug, Clone, Copy)]
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul
+}
+
+impl TryFrom<String> for BinOp {
+    type Error = ();
+    
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "add" => Ok(BinOp::Add),
+            "sub" => Ok(BinOp::Sub),
+            "mul" => Ok(BinOp::Mul),
+            _ => Err(())
+        }
+    }
+}
+
+#[derive(serde::Deserialize, Debug, Clone, Copy)]
+pub enum ShortBehavior {
+    Zero,
+    UseLastSample,
+}
+
+impl TryFrom<String> for ShortBehavior {
+    type Error = ();
+    
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "zero" => Ok(ShortBehavior::Zero),
+            "last_sample" => Ok(ShortBehavior::UseLastSample),
+            _ => Err(())
+        }
+    }
+}
+
 #[derive(serde::Deserialize, Debug)]
 #[serde(untagged)]
 pub enum NodeJsonData {
@@ -50,11 +88,18 @@ pub enum NodeJsonData {
         amplitude: f32,
         seconds: f32
     },
+    BinOp {
+        bin_op: String,
+        on_short_a: String,
+        on_short_b: String,
+    },
     Output {}
 }
 
 #[derive(serde::Deserialize, Debug)]
 pub struct EdgeJson {
     pub source: String,
-    pub target: String
+    pub target: String,
+    #[serde(rename="targetHandle")]
+    pub target_handle: Option<String>
 }

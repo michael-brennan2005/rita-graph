@@ -1,10 +1,10 @@
 use core::f32;
-use std::collections::HashMap;
+use std::{borrow::Borrow, collections::HashMap};
 
 use petgraph::{data::Build, graph::NodeIndex, visit::EdgeRef, Direction::Incoming};
 use samplerate::{convert, ConverterType};
 
-use crate::{graph_json::{GraphJson, NodeJsonData, WaveType}, messages::send_status, playback::spec::{F32Convert, F32FormatSpec}};
+use crate::{graph_json::{BinOp, GraphJson, NodeJsonData, ShortBehavior, WaveType}, messages::send_status, playback::spec::{F32Convert, F32FormatSpec}};
 
 // the audio graph!!!
 pub struct AudioGraph {
@@ -21,6 +21,11 @@ enum AudioGraphNode {
         amplitude: f32,
         seconds: f32
     },
+    BinOp {
+        operation: BinOp,
+        on_short_a: ShortBehavior,
+        on_short_b: ShortBehavior
+    },
     Output {
         final_buffer: Vec<f32>
     }
@@ -32,6 +37,8 @@ impl AudioGraphNode {
             AudioGraphNode::Input { file_path: _  } => 1,
             AudioGraphNode::WaveGen { wave_type: _, frequency: _, amplitude: _, seconds: _ } => 1,
             AudioGraphNode::Output { final_buffer: _ } => 0,
+            AudioGraphNode::BinOp { operation, on_short_a, on_short_b } => 1,
+            
         }
     }
 
@@ -183,7 +190,83 @@ impl AudioGraphNode {
                     None => todo!(),
                 }
             },
+            AudioGraphNode::BinOp { operation, on_short_a, on_short_b } => {
+                let a_buf = {
+                    let input = inputs.get(&my_idx).unwrap()
+                    .iter().find(|x| {
+                        x.2 == 0
+                    }).unwrap();
+
+                    match outputs.get(&input.0).unwrap()[input.1].as_ref().unwrap() {
+                        EdgeData::SoundBuffer { buf } => buf,
+                    }
+                
+                };
+                    
+                let b_buf = {
+                    let input = inputs.get(&my_idx).unwrap()
+                    .iter().find(|x| {
+                        x.2 == 1
+                    }).unwrap();
+
+                    match outputs.get(&input.0).unwrap()[input.1].as_ref().unwrap() {
+                        EdgeData::SoundBuffer { buf } => buf,
+                    }
+                };
+
+                let apply: fn(f32, f32) -> f32 = match *operation {
+                    BinOp::Add => |x, y| { x + y },
+                    BinOp::Sub => |x, y| { x - y},
+                    BinOp::Mul => |x, y| { x * y},
+                };
+
+                let get_a = |i: usize| {
+                    if i < a_buf.len() {
+                        a_buf[i]
+                    } else {
+                        match on_short_a {
+                            ShortBehavior::Zero => 0.0,
+                            ShortBehavior::UseLastSample => a_buf[a_buf.len() - 1],
+                        }
+                    }
+                };
+
+                let get_b = |i: usize| {
+                    if i < b_buf.len() {
+                        b_buf[i]
+                    } else {
+                        match on_short_b {
+                            ShortBehavior::Zero => 0.0,
+                            ShortBehavior::UseLastSample => b_buf[b_buf.len() - 1],
+                        }
+                    }
+                };
+
+                let total_frames = usize::max(a_buf.len(), b_buf.len());
+                let mut samples: Vec<f32> = Vec::with_capacity(total_frames);
+
+                for i in 0..total_frames {
+                    samples.push(apply(get_a(i), get_b(i)));
+                }
+
+                match outputs.get_mut(&my_idx) {
+                    Some(vec) => {
+                        vec[0] = Some(EdgeData::SoundBuffer { buf: samples })
+                    },
+                    None => {
+                        send_status(window, format!("Potential issue with outputs matrix initialization (what)"))
+                    }
+                }
+            },
         }
+    }
+
+    /// Returns `true` if the audio graph node is [`BinOp`].
+    ///
+    /// [`BinOp`]: AudioGraphNode::BinOp
+    #[must_use]
+    fn is_bin_op(&self) -> bool {
+        matches!(self, Self::BinOp { .. })
     }
 }
 
@@ -293,6 +376,14 @@ impl TryFrom<GraphJson> for AudioGraph {
                     });
                     node_indexes.insert(node_json.id, idx);
                 },
+                NodeJsonData::BinOp { bin_op, on_short_a, on_short_b } => {
+                    let idx = graph.add_node(AudioGraphNode::BinOp { 
+                        operation: bin_op.try_into().expect("Failed to parse binop"), 
+                        on_short_a: on_short_a.try_into().expect("Failed to parse onshorta"), 
+                        on_short_b: on_short_b.try_into().expect("Falied to parse onshortb") 
+                    });
+                    node_indexes.insert(node_json.id, idx);
+                },
             }
         }
 
@@ -305,9 +396,14 @@ impl TryFrom<GraphJson> for AudioGraph {
                 return Err(());
             }
 
+            let target_handle = match edge_json.target_handle {
+                Some(val) => val.parse::<usize>().expect("Failed to parse target handle"),
+                None => 0,
+            };
+
             graph.add_edge(*from_node.unwrap(), *to_node.unwrap(), AudioGraphEdge {
                 from_idx: 0,
-                to_idx: 0
+                to_idx: target_handle
             });
         }
 

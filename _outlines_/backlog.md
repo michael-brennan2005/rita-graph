@@ -34,3 +34,4 @@
 - Figuring out a way for nice validation on inputs and stuff
     - Making sure numeric inputs only allow numeric inputs, in a nice/ergonomic way
     - There is probably libraries/resources for this - common problem
+- Node builder for UI - this is gonna get very annoying very quickly

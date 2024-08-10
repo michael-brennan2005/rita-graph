@@ -138,6 +138,26 @@ export default function App() {
                             })
                         })
                     }}>WaveGen</Button>
+
+                    <Button onClick={() => {
+                        setNodes((nds) => {
+                            return nds.concat({
+                                // todo: more robust ID generation
+                                id: `${nds.length + 1}`,
+                                position: rfInstance!.screenToFlowPosition({
+                                    x: 400,
+                                    y: 400,
+                                }),
+                                origin: [0.5, 0.0],
+                                type: "binop",
+                                data: { 
+                                    bin_op: "add",
+                                    on_short_a: "zero",
+                                    on_short_b: "zero"
+                                }
+                            })
+                        })
+                    }}>BinOp</Button>
                 </div>
             </div>
 
